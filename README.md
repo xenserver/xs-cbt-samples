@@ -5,6 +5,8 @@ These scripts are an example of how to use the changed block tracking feature fr
 * enabling changed block tracking
 * copying changed blocks
 * destroying unnecessary snapshot data.
+* coalescing incremental backup onto base VDI 
+* importing backup VDI
 
 The examples are written in Python.
 
