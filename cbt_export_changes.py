@@ -5,7 +5,7 @@ For a given VDI and previous snapshot uuid this script will take a new snapshot,
 
 This script utilises the core of the new CBT functionality which is to find changes blocks between snapshots and exporting them via NBD.
 
-example: python cbt_export_changes.py -h <host address> -u <host username> -p <host password> -v <vdi uuid> -s <previous snapshot uuid> -co <changed block output path> -bo <bitmap output path>
+example: python cbt_export_changes.py -ip <host address> -u <host username> -p <host password> -v <vdi uuid> -s <previous snapshot uuid> -co <changed block output path> -bo <bitmap output path>
 
 Script will then print out the new snapshot uuid at the end. Changed blocks and bitmap are saved to the paths specified.
 """

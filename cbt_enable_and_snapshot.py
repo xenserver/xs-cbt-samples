@@ -3,7 +3,7 @@
 """
 For a given VDI this script enables cbt, snapshots the VDI and exports the snapshot. This script will only need to be run once when first enabling cbt backups and will create the base snapshot. After the VDI has been exported the snapshot data is destroyed to save space on the host.
 
-example: python cbt_enable_and_snapshot.py -h <host address> -u <host username> -p <host password> -v <vdi uuid> -o <output path of VDI>
+example: python cbt_enable_and_snapshot.py -ip <host address> -u <host username> -p <host password> -v <vdi uuid> -o <output path of VDI>
 
 Script will then print out the snapshot uuid before it returns. VDI is saved to the output path specified
 """

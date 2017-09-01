@@ -3,7 +3,7 @@
 """
 For a given vdi and import file this script will import a VDI on to a XS host. This script needs to be run whenever you want to restore a VDI to a previous version.
 
-example: python cbt_import_whole_vdi.py -h <host address> -u <host username> -p <host password> -v <vdi uuid> -f <import VDI filename>
+example: python cbt_import_whole_vdi.py -ip <host address> -u <host username> -p <host password> -v <vdi uuid> -f <import VDI filename>
 """
 
 import urllib3
