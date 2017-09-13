@@ -28,7 +28,7 @@ def get_changed_blocks(host, export_name, bitmap, bitmap_output_path):
                 # The bits are written in the form "0" and "1" to the file
                 bit_out.write(str(int(bit)))
     print "connecting to NBD"
-    client = new_nbd_client(host, export_name)
+    client = new_nbd_client(host, export_name, "./cacert.pem")
     print "size: %s" % client.size()
     for i in range(0, len(bitmap)):
         if bitmap[i] == 1:

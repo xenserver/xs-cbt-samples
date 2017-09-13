@@ -14,6 +14,12 @@ import urllib3
 import requests
 import argparse
 
+def collect_host_certificates(session, certfile="cacert.pem"):
+    host_list = session.xenapi.host.get_all()
+    with open(certfile, 'w') as cert_out:
+        for host in host_list:
+            cert_out.write(session.xenapi.host.get_server_certificate(host) + "\n")
+
 def export_vdi(host, session_id, vdi_uuid, file_format, export_path):
     url = ('https://%s/export_raw_vdi?session_id=%s&vdi=%s&format=%s'
            % (host, session_id, vdi_uuid, file_format))
@@ -39,6 +45,7 @@ def main():
     session.login_with_password(args.username, args.password, "0.1", "CBT example")
     
     try:
+        collect_host_certificates(session)
         vdi_ref = session.xenapi.VDI.get_by_uuid(args.vdi_uuid)
         session.xenapi.VDI.enable_cbt(vdi_ref)
         snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
