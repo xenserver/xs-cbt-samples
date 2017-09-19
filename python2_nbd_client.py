@@ -33,6 +33,7 @@ class new_nbd_client(object):
     NBD_OPT_EXPORT_NAME = 1
     NBD_OPT_STARTTLS = 5
     NBD_REP_ACK = (1)
+    # Cflags contains the NBD_FLAG_C_FIXED_NEWSTYLE flag
     cflags = (1 << 0)
 
     NBD_REQUEST_MAGIC = 0x25609513
@@ -58,10 +59,13 @@ class new_nbd_client(object):
             self._closed = True
 
     def _upgrade_socket_to_TLS(self):
-        # Default context uses PROTOCOL_TLS
         thesocket = self._s
-        context = ssl.create_default_context()
+        # Forcing the client to use TLSv1_2
         context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        context.options &= ~ssl.OP_NO_TLSv1
+        context.options &= ~ssl.OP_NO_TLSv1_1
+        context.options &= ~ssl.OP_NO_SSLv2
+        context.options &= ~ssl.OP_NO_SSLv3
         context.check_hostname = False
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_verify_locations(cafile=self.ca_cert)
@@ -75,9 +79,8 @@ class new_nbd_client(object):
         self._s.sendall(tls_option)
         length = struct.pack('>L', 0)
         self._s.sendall(length)
-        # receive magic
+        # receive size - Don't need to do anything with this
         buf = self._s.recv(8)
-        magic = struct.unpack(">Q", buf)[0]
         # receive option type e.g. NBD_OPT_STARTTLS
         buf = self._s.recv(4)
         option_type = struct.unpack(">I", buf)[0]
