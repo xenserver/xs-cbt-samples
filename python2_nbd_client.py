@@ -17,6 +17,7 @@
 
 import socket
 import struct
+import ssl
 
 
 class new_nbd_client(object):
@@ -30,17 +31,22 @@ class new_nbd_client(object):
     FLAG_SEND_FLUSH = (1 << 2)
 
     NBD_OPT_EXPORT_NAME = 1
+    NBD_OPT_STARTTLS = 5
+    NBD_REP_ACK = (1)
+    # Cflags contains the NBD_FLAG_C_FIXED_NEWSTYLE flag
+    cflags = (1 << 0)
 
     NBD_REQUEST_MAGIC = 0x25609513
     NBD_REPLY_MAGIC = 0x67446698
 
-    def __init__(self, hostname, export_name="", port=10809):
+    def __init__(self, hostname, export_name="", ca_cert=None, port=10809):
         self._flushed = True
         self._closed = True
         self._handle = 0
+        self.ca_cert = ca_cert
         self._s = socket.create_connection((hostname, port))
         self._closed = False
-        self._non_fixed_new_style_handshake(export_name)
+        self._fixed_new_style_handshake(export_name)
 
     def __del__(self):
         self.close()
@@ -52,7 +58,43 @@ class new_nbd_client(object):
             self._disconnect()
             self._closed = True
 
-    def _non_fixed_new_style_handshake(self, export_name):
+    def _upgrade_socket_to_TLS(self):
+        thesocket = self._s
+        # Forcing the client to use TLSv1_2
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        context.options &= ~ssl.OP_NO_TLSv1
+        context.options &= ~ssl.OP_NO_TLSv1_1
+        context.options &= ~ssl.OP_NO_SSLv2
+        context.options &= ~ssl.OP_NO_SSLv3
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(cafile=self.ca_cert)
+        self._s = context.wrap_socket(thesocket, server_side=False,
+                                      do_handshake_on_connect=True)
+
+    def _initiate_TLS_upgrade(self):
+        # start TLS negotiation
+        self._s.sendall(b'IHAVEOPT')
+        tls_option = struct.pack('>L', self.NBD_OPT_STARTTLS)
+        self._s.sendall(tls_option)
+        length = struct.pack('>L', 0)
+        self._s.sendall(length)
+        # receive size - Don't need to do anything with this
+        buf = self._s.recv(8)
+        # receive option type e.g. NBD_OPT_STARTTLS
+        buf = self._s.recv(4)
+        option_type = struct.unpack(">I", buf)[0]
+        assert(option_type == self.NBD_OPT_STARTTLS)
+        # receive NBD_REP_ACK
+        buf = self._s.recv(4)
+        acknowledge = struct.unpack(">I", buf)[0]
+        assert(acknowledge == self.NBD_REP_ACK)
+        # receive option reply data length
+        buf = self._s.recv(4)
+        length = struct.unpack(">I", buf)[0]
+        assert(length == 0)
+
+    def _fixed_new_style_handshake(self, export_name):
         nbd_magic = self._s.recv(len("NBDMAGIC"))
         assert(nbd_magic == b'NBDMAGIC')
         nbd_magic = self._s.recv(len("IHAVEOPT"))
@@ -60,8 +102,15 @@ class new_nbd_client(object):
         buf = self._s.recv(2)
         self._flags = struct.unpack(">H", buf)[0]
         assert(self._flags & self.FLAG_HAS_FLAGS != 0)
-        client_flags = struct.pack('>L', 0)
+        # send fixed new style flags
+        client_flags = struct.pack('>L', self.cflags)
         self._s.sendall(client_flags)
+
+        if self.ca_cert:
+            # start TLS negotiation
+            self._initiate_TLS_upgrade()
+            # upgrade socket to TLS
+            self._upgrade_socket_to_TLS()
 
         # request export
         self._s.sendall(b'IHAVEOPT')
@@ -71,7 +120,7 @@ class new_nbd_client(object):
         self._s.sendall(length)
         self._s.sendall(str.encode(export_name))
 
-        # non-fixed newstyle negotiation: we get this if the server is willing
+        # fixed newstyle negotiation: we get this if the server is willing
         # to allow the export
         buf = self._s.recv(8)
         self._size = struct.unpack(">Q", buf)[0]
@@ -79,7 +128,7 @@ class new_nbd_client(object):
         self._s.recv(2 + 124)
 
     def _build_header(self, request_type, offset, length):
-        print "NBD request offset=%d length=%d" % (offset, length) 
+        print "NBD request offset=%d length=%d" % (offset, length)
         command_flags = 0
         header = struct.pack('>LHHQQL', self.NBD_REQUEST_MAGIC, command_flags,
                              request_type, self._handle, offset, length)
@@ -89,7 +138,8 @@ class new_nbd_client(object):
         print "NBD parsing response, data_length=%d" % data_length
         reply = self._s.recv(4 + 4 + 8)
         (magic, errno, handle) = struct.unpack(">LLQ", reply)
-        print "NBD response magic='%x' errno='%d' handle='%d'" %(magic, errno, handle)
+        print "NBD response magic='%x' errno='%d' handle='%d'" % (magic, errno,
+                                                                  handle)
         assert(magic == self.NBD_REPLY_MAGIC)
         assert(handle == self._handle)
         self._handle += 1
