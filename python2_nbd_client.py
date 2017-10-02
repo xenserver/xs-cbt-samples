@@ -65,7 +65,7 @@ class new_nbd_client(object):
     def _upgrade_socket_to_TLS(self):
         thesocket = self._s
         # Forcing the client to use TLSv1_2
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         context.options &= ~ssl.OP_NO_TLSv1
         context.options &= ~ssl.OP_NO_TLSv1_1
         context.options &= ~ssl.OP_NO_SSLv2
