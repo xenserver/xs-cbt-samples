@@ -106,7 +106,7 @@ def main():
         vdi_ref = session.xenapi.VDI.get_by_uuid(args.vdi_uuid)
         last_snapshot_ref = session.xenapi.VDI.get_by_uuid(args.snapshot_uuid)
         new_snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
-        bitmap = session.xenapi.VDI.export_changed_blocks(last_snapshot_ref,
+        bitmap = session.xenapi.VDI.list_changed_blocks(last_snapshot_ref,
                                                           new_snapshot_ref)
         download_changed_blocks(bitmap,
                         session.xenapi.VDI.get_nbd_info(new_snapshot_ref)[0],
