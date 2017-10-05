@@ -39,11 +39,15 @@ class new_nbd_client(object):
     NBD_REQUEST_MAGIC = 0x25609513
     NBD_REPLY_MAGIC = 0x67446698
 
-    def __init__(self, hostname, export_name="", ca_cert=None, port=10809):
+    def __init__(self, hostname, export_name="", ca_cert=None,
+                 tls_hostname=None, port=10809):
         self._flushed = True
         self._closed = True
         self._handle = 0
         self.ca_cert = ca_cert
+        self.tls_hostname = tls_hostname
+        if not self.tls_hostname:
+            self.tls_hostname = hostname
         self._s = socket.create_connection((hostname, port))
         self._closed = False
         self._fixed_new_style_handshake(export_name)
@@ -66,11 +70,12 @@ class new_nbd_client(object):
         context.options &= ~ssl.OP_NO_TLSv1_1
         context.options &= ~ssl.OP_NO_SSLv2
         context.options &= ~ssl.OP_NO_SSLv3
-        context.check_hostname = False
         context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = True
         context.load_verify_locations(cafile=self.ca_cert)
         self._s = context.wrap_socket(thesocket, server_side=False,
-                                      do_handshake_on_connect=True)
+                                      do_handshake_on_connect=True,
+                                      server_hostname=self.tls_hostname)
 
     def _initiate_TLS_upgrade(self):
         # start TLS negotiation
