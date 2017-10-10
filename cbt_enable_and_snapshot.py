@@ -6,6 +6,10 @@ snapshot. This script will only need to be run once when first enabling cbt
 backups and will create the base snapshot. After the VDI has been exported
 the snapshot data is destroyed to save space on the host.
 
+The enable_nbd_on_all_networks function will add the nbd option to the 
+purpose field of all networks on the host you are connecting to thereby
+enabling nbd connections on all networks.
+
 example: python cbt_enable_and_snapshot.py -ip <host address>
 -u <host username> -p <host password> -v <vdi uuid> -o <output path of VDI>
 
@@ -18,6 +22,13 @@ import shutil
 import urllib3
 import requests
 import argparse
+
+
+def enable_nbd_on_all_networks(session):
+    connection_type = "nbd"
+    network_list = session.xenapi.network.get_all()
+    for network in network_list:
+        session.xenapi.network.add_purpose(network, connection_type)
 
 
 def export_vdi(host, session_id, vdi_uuid, file_format, export_path):
@@ -46,6 +57,7 @@ def main():
                                 "CBT example")
 
     try:
+        enable_nbd_on_all_networks(session)
         vdi_ref = session.xenapi.VDI.get_by_uuid(args.vdi_uuid)
         session.xenapi.VDI.enable_cbt(vdi_ref)
         snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
