@@ -11,3 +11,4 @@ idna==2.6                 # via requests
 requests==2.18.4
 urllib3==1.22
 six==1.10.0
+cryptography==2.1.1
