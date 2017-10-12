@@ -24,6 +24,8 @@ import base64
 from bitstring import BitStream
 import argparse
 import os
+import re
+import sys
 
 # CBT tracks 64KB blocks. Therefore each bit in the bitmap corresponds to a
 # 64KB block on the VDI.
@@ -31,22 +33,35 @@ changed_block_size = 64 * 1024
 certfile = "cacert.pem"
 
 
-def collect_host_certificates(session):
-    # Note that this function is only necessary for self-signed certificates
-    # For certificates signed by a CA you will need to collect the public
-    # certificates from the CA.
-    host_list = session.xenapi.host.get_all()
-    with open(certfile, 'w') as cert_out:
-        for host in host_list:
-            cert_out.write(session.xenapi.host.get_server_certificate(host)
-                           + "\n")
+def get_cert_subject(cert_text):
+    from cryptography import x509
+    from cryptography.hazmat.backends import default_backend
+    cert = x509.load_pem_x509_certificate(cert_text, default_backend())
+    try:
+        value_types = [x509.DNSName, x509.GeneralName, x509.RFC822Name]
+        for value_type in value_types:
+            ext = cert.extensions.get_extension_for_oid(
+                          x509.ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+            cert_subject = ext.value.get_values_for_type(value_type)[0]
+            if cert_subject:
+                return cert_subject
+        raise Exception
+
+    except:
+        sub = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+        cert_subject = sub[0].value
+        if cert_subject:
+            return cert_subject
+        else:
+            print "Could not find the subject for the certificate. Exiting"
+            sys.exit(1)
 
 
 def delete_host_certificates_file():
     os.remove(certfile)
 
 
-def get_changed_blocks(host, export_name, bitmap, bitmap_output_path):
+def get_changed_blocks(host, export_name, tls_subject, bitmap, bitmap_output_path):
     bitmap = BitStream(bytes=base64.b64decode(bitmap))
     with open(bitmap_output_path, 'ab') as bit_out:
         for bit in bitmap:
@@ -54,7 +69,7 @@ def get_changed_blocks(host, export_name, bitmap, bitmap_output_path):
                 # The bits are written in the form "0" and "1" to the file
                 bit_out.write(str(int(bit)))
     print "connecting to NBD"
-    client = new_nbd_client(host, export_name, certfile)
+    client = new_nbd_client(host, export_name, certfile, tls_subject)
     print "size: %s" % client.size()
     for i in range(0, len(bitmap)):
         if bitmap[i] == 1:
@@ -74,13 +89,17 @@ def save_changed_blocks(changed_blocks, output_file):
             out.write(b)
 
 
-def download_changed_blocks(bitmap, uri, changed_blocks_output_path,
+def download_changed_blocks(bitmap, nbd_info, changed_blocks_output_path,
                             bitmap_output_path):
 
     print "downloading changed blocks"
-    # Extract the host ip address from the URI
-    host = uri.split("/")[2].split(":")[0]
-    blocks = get_changed_blocks(host, uri, bitmap, bitmap_output_path)
+    cert_text = nbd_info['cert']
+    with open(certfile, 'w') as cert_out:
+        cert_out.write(cert_text)
+    tls_subject = get_cert_subject(cert_text)
+    host = nbd_info['address']
+    uri = nbd_info['exportname']
+    blocks = get_changed_blocks(host, uri, tls_subject, bitmap, bitmap_output_path)
     save_changed_blocks(blocks, changed_blocks_output_path)
 
 
@@ -102,14 +121,15 @@ def main():
                                 "CBT example")
 
     try:
-        collect_host_certificates(session)
         vdi_ref = session.xenapi.VDI.get_by_uuid(args.vdi_uuid)
         last_snapshot_ref = session.xenapi.VDI.get_by_uuid(args.snapshot_uuid)
         new_snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
         bitmap = session.xenapi.VDI.list_changed_blocks(last_snapshot_ref,
                                                           new_snapshot_ref)
-        download_changed_blocks(bitmap,
-                        session.xenapi.VDI.get_nbd_info(new_snapshot_ref)[0],
+        # get_nbd_info may return the details for multiple addresses, for this
+        # example we will just use the first one
+        nbd_info = session.xenapi.VDI.get_nbd_info(new_snapshot_ref)[0]
+        download_changed_blocks(bitmap, nbd_info,
                         args.changed_blocks_output_path,
                         args.bitmap_output_path)
         # Once you are done copying the blocks you want you can delete the
@@ -117,8 +137,8 @@ def main():
         session.xenapi.VDI.data_destroy(new_snapshot_ref)
         print session.xenapi.VDI.get_uuid(new_snapshot_ref)
     finally:
-        delete_host_certificates_file()
         session.xenapi.session.logout(session)
+        delete_host_certificates_file()
 
 
 if __name__ == "__main__":
