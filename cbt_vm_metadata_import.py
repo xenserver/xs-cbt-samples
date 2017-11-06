@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 """
-For a given vm and old/new VDI pairs this script will export the metadata of
-a VM then reimport it with new VDIs. This script should be run when you want
+For a given vm and old/new VDI pairs this script will import the metadata of
+a VM pointing to a new set of VDIs. This script should be run when you want
 to make a new VM from a backup. The new VDIs containing the backup data should
 be created before this script is run.
 
-example: python cbt_vm_metadata_import_export.py -ip <host address>
--u <host username> -p <host password> -v <vm uuid> -o <metadata output path>
+example: python cbt_vm_metadata_import.py -ip <host address>
+-u <host username> -p <host password> -v <vm uuid> -i <metadata output path>
 <old vdi uuid> <new vdi uuid> ...
 """
 
@@ -19,24 +19,6 @@ import requests
 import argparse
 import re
 import sys
-
-
-def export_vm(host, session_id, vm_uuid, export_path):
-    # export_snapshots option determines whether vm snapshot data is included
-    url = ("https://%s/export_metadata?session_id=%s&uuid=%s"
-           "&export_snapshots=false"
-           % (host, session_id, vm_uuid))
-
-    with requests.Session() as session:
-        # ToDo: Security - We need to verify the SSL certificate here.
-        # Depends on CP-23051.
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        request = session.get(url, verify=False, stream=True)
-        with open(export_path, 'wb') as filehandle:
-            shutil.copyfileobj(request.raw, filehandle)
-        request.raise_for_status()
-
-    print "Metadata saved to: %s" % export_path
 
 
 def import_vm(host, session, import_path, vdis=None):
@@ -75,7 +57,7 @@ def main():
     parser.add_argument('-u', '--username', dest='username')
     parser.add_argument('-p', '--password', dest='password')
     parser.add_argument('-v', '--vm-uuid', dest='vm_uuid')
-    parser.add_argument('-o', '--output-path', dest='output_path')
+    parser.add_argument('-i', '--input-path', dest='input_path')
     parser.add_argument('vars', nargs='*')
     args = parser.parse_args()
     session = XenAPI.Session("https://" + args.host, ignore_ssl=True)
@@ -83,8 +65,7 @@ def main():
                                 "CBT example")
 
     try:
-        export_vm(args.host, session._session, args.vm_uuid, args.output_path)
-        new_vm_ref = import_vm(args.host, session, args.output_path, args.vars)
+        new_vm_ref = import_vm(args.host, session, args.input_path, args.vars)
         print new_vm_ref
 
     finally:
