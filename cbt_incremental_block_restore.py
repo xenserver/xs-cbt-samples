@@ -57,10 +57,6 @@ def get_cert_subject(cert_text):
             sys.exit(1)
 
 
-def delete_host_certificates_file():
-    os.remove(certfile)
-
-
 def write_changed_blocks_to_base_VDI(vdi_path, changed_block_path, bitmap_path,
                                      output_path):
     bitmap = open(bitmap_path, 'r')
@@ -112,11 +108,9 @@ def write_changed_blocks_to_remote_VDI(host, export_name, tls_subject, bitmap, v
         bitmap.close()
         base_vdi_data.close()
 
-def save_changed_blocks(changed_blocks, output_file):
 
-    with open(output_file, 'ab') as out:
-        for b in changed_blocks:
-            out.write(b)
+def delete_host_certificates_file():
+    os.remove(certfile)
 
 
 def restore_changed_blocks(bitmap, nbd_info, vdi_path):
@@ -130,6 +124,15 @@ def restore_changed_blocks(bitmap, nbd_info, vdi_path):
     uri = nbd_info['exportname']
     write_changed_blocks_to_remote_VDI(host, uri, tls_subject, bitmap, vdi_path)
 
+def nbd_session(nbd_info):
+    print "Connectin to nbd client"
+    cert_text = nbd_info['cert']
+    with open(certfile, 'w') as cert_out:
+        cert_out.write(cert_text)
+    tls_subject = get_cert_subject(cert_text)
+    host = nbd_info['address']
+    uri = nbd_info['exportname']
+    return new_nbd_client(host, uri, certfile, tls_subject)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -137,9 +140,7 @@ def main():
     parser.add_argument('-u', '--username', dest='username')
     parser.add_argument('-p', '--password', dest='password')
     parser.add_argument('-v', '--vdi-uuid', dest='vdi_uuid')
-    parser.add_argument('-s', '--snapshot-uuid', dest='snapshot_uuid')
-    parser.add_argument('-vdi', '--vdi-path',
-                        dest='vdi_path')
+    parser.add_argument('-vdi', '--vdi-path', dest='vdi_path')
     args = parser.parse_args()
 
     session = XenAPI.Session("https://" + args.host, ignore_ssl=True)
@@ -148,7 +149,14 @@ def main():
 
     try:
         vdi_ref = session.xenapi.VDI.get_by_uuid(args.vdi_uuid)
-        last_snapshot_ref = session.xenapi.VDI.get_by_uuid(args.snapshot_uuid)
+        # Write data to the VDI here so we have some changed blocks
+        last_snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
+        nbd_info = session.xenapi.VDI.get_nbd_info(last_snapshot_ref)[0] 
+        client = nbd_session(nbd_info)
+        client.write("a" * 512, 0)
+        client.close()
+
+        # Take a new snap then restore the blocks that changed
         new_snapshot_ref = session.xenapi.VDI.snapshot(vdi_ref)
         bitmap = session.xenapi.VDI.list_changed_blocks(last_snapshot_ref,
                                                           new_snapshot_ref)
