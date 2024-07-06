@@ -5,7 +5,7 @@
 #    pip-compile --output-file requirements.txt requirements.pip
 #
 bitstring==3.1.5
-certifi==2023.7.22      # via requests
+certifi==2024.7.4      # via requests
 chardet==3.0.4            # via requests
 idna==3.7                 # via requests
 requests==2.32.0
