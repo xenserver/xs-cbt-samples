@@ -9,10 +9,10 @@ PASSWORD=$3
 VDI=$4
 VM=$5
 
-BASE_VDI_PATH="./testvdi.vhd"
+BASE_VDI_PATH="./testvdi.raw"
 BITMAP_PATH="./bitmap"
-CHANGED_BLOCK_PATH="./testblocks.vhd"
-COMBINED_VDI_PATH="./testcombined"
+CHANGED_BLOCK_PATH="./testblocks.raw"
+COMBINED_VDI_PATH="./testcombined.raw"
 METADATA_PATH="./metadata"
 CONNECTION="-ip $HOST -u $USERNAME -p $PASSWORD"
 
