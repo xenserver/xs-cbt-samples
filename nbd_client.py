@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 Nodalink, SARL.
@@ -133,18 +133,18 @@ class new_nbd_client(object):
         self._s.recv(2 + 124)
 
     def _build_header(self, request_type, offset, length):
-        print "NBD request offset=%d length=%d" % (offset, length)
+        print("NBD request offset=%d length=%d" % (offset, length))
         command_flags = 0
         header = struct.pack('>LHHQQL', self.NBD_REQUEST_MAGIC, command_flags,
                              request_type, self._handle, offset, length)
         return header
 
     def _parse_reply(self, data_length=0):
-        print "NBD parsing response, data_length=%d" % data_length
+        print("NBD parsing response, data_length=%d" % data_length)
         reply = self._s.recv(4 + 4 + 8)
         (magic, errno, handle) = struct.unpack(">LLQ", reply)
-        print "NBD response magic='%x' errno='%d' handle='%d'" % (magic, errno,
-                                                                  handle)
+        print("NBD response magic='%x' errno='%d' handle='%d'" % (magic, errno,
+                                                                  handle))
         assert(magic == self.NBD_REPLY_MAGIC)
         assert(handle == self._handle)
         self._handle += 1
@@ -152,7 +152,7 @@ class new_nbd_client(object):
         while len(data) < data_length:
             data = data + self._s.recv(data_length - len(data))
         assert(len(data) == data_length)
-        print "NBD response received data_length=%d bytes" % data_length
+        print("NBD response received data_length=%d bytes" % data_length)
         return (data, errno)
 
     def _check_value(self, name, value):
@@ -161,7 +161,7 @@ class new_nbd_client(object):
         raise ValueError("%s=%i is not a multiple of 512" % (name, value))
 
     def write(self, data, offset):
-        print "NBD_CMD_WRITE"
+        print("NBD_CMD_WRITE")
         self._check_value("offset", offset)
         self._check_value("size", len(data))
         self._flushed = False
@@ -172,7 +172,7 @@ class new_nbd_client(object):
         return len(data)
 
     def read(self, offset, length):
-        print "NBD_CMD_READ"
+        print("NBD_CMD_READ")
         self._check_value("offset", offset)
         self._check_value("length", length)
         header = self._build_header(self.READ, offset, length)
@@ -188,7 +188,7 @@ class new_nbd_client(object):
             return False
 
     def flush(self):
-        print "NBD_CMD_FLUSH"
+        print("NBD_CMD_FLUSH")
         if self.need_flush() is False:
             self._flushed = True
             return True
@@ -200,7 +200,7 @@ class new_nbd_client(object):
         return errno == 0
 
     def _disconnect(self):
-        print "NBD_CMD_DISC"
+        print("NBD_CMD_DISC")
         header = self._build_header(self.DISCONNECT, 0, 0)
         self._s.sendall(header)
 

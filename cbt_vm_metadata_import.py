@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given vm and old/new VDI pairs this script will import the metadata of
@@ -24,7 +24,7 @@ import sys
 def import_vm(host, session, import_path, vdis=None):
 
     if len(vdis) % 2 != 0:
-        print "Error: VDIs should be included in new/old uuid pairs"
+        print("Error: VDIs should be included in new/old uuid pairs")
         sys.exit(1)
 
     vdi_string = ""
@@ -66,7 +66,7 @@ def main():
 
     try:
         new_vm_ref = import_vm(args.host, session, args.input_path, args.vars)
-        print new_vm_ref
+        print(new_vm_ref)
 
     finally:
         session.xenapi.session.logout()

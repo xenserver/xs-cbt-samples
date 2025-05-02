@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given vm this script will export the metadata not including the vm
@@ -33,7 +33,7 @@ def export_vm(host, session_id, vm_uuid, export_path):
             shutil.copyfileobj(request.raw, filehandle)
         request.raise_for_status()
 
-    print "Metadata saved to: %s" % export_path
+    print("Metadata saved to: %s" % export_path)
 
 def main():
     parser = argparse.ArgumentParser()

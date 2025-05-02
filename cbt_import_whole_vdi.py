@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given vdi and import file this script will import a VDI on to a XS host.
@@ -32,7 +32,7 @@ def create_new_vdi(session, sr, size):
 def import_vdi(host, session_id, vdi_uuid, file_format, import_path):
     url = ('https://%s/import_raw_vdi?session_id=%s&vdi=%s&format=%s'
            % (host, session_id, vdi_uuid, file_format))
-    with open(import_path, 'r') as filehandle:
+    with open(import_path, 'rb') as filehandle:
         # ToDo: Security - We need to verify the SSL certificate here.
         # Depends on CP-23051.
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -67,7 +67,7 @@ def main():
 
         import_vdi(args.host, session._session, vdi_uuid, 'raw',
                    args.path)
-        print vdi_uuid
+        print(vdi_uuid)
     finally:
         session.xenapi.session.logout(session)
 

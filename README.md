@@ -20,5 +20,5 @@ For the XenAPI package use the one provided in the SDK.
 
 You can then run the end-to-end scripts using:
 ```bash
-    ./execute-cbt.sh <host address> <username> <password> <VDI uuid>
+    ./execute-cbt.sh <host address> <username> <password> <VDI uuid> <VM uuid>
 ```

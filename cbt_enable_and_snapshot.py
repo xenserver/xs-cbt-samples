@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given VDI this script enables cbt, snapshots the VDI and exports the
@@ -66,7 +66,7 @@ def main():
                    args.output_path)
         # Once you are done copying the blocks, delete the snapshot data
         session.xenapi.VDI.data_destroy(snapshot_ref)
-        print session.xenapi.VDI.get_uuid(snapshot_ref)
+        print(session.xenapi.VDI.get_uuid(snapshot_ref))
 
     finally:
         session.xenapi.session.logout()
