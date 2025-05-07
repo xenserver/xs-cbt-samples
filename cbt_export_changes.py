@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given VDI and previous snapshot uuid this script will take a new
@@ -19,7 +19,7 @@ and bitmap are saved to the paths specified.
 """
 
 import XenAPI
-from python2_nbd_client import new_nbd_client
+from nbd_client import new_nbd_client
 import base64
 from bitstring import BitStream
 import argparse
@@ -36,7 +36,7 @@ certfile = "cacert.pem"
 def get_cert_subject(cert_text):
     from cryptography import x509
     from cryptography.hazmat.backends import default_backend
-    cert = x509.load_pem_x509_certificate(cert_text, default_backend())
+    cert = x509.load_pem_x509_certificate(cert_text.encode(), default_backend())
     try:
         value_types = [x509.DNSName, x509.GeneralName, x509.RFC822Name]
         for value_type in value_types:
@@ -53,7 +53,7 @@ def get_cert_subject(cert_text):
         if cert_subject:
             return cert_subject
         else:
-            print "Could not find the subject for the certificate. Exiting"
+            print("Could not find the subject for the certificate. Exiting")
             sys.exit(1)
 
 
@@ -67,18 +67,18 @@ def get_changed_blocks(host, export_name, tls_subject, bitmap, bitmap_output_pat
         for bit in bitmap:
             if int(bit) == 1 or int(bit) == 0:
                 # The bits are written in the form "0" and "1" to the file
-                bit_out.write(str(int(bit)))
-    print "connecting to NBD"
+                bit_out.write(str(int(bit)).encode())
+    print("connecting to NBD")
     client = new_nbd_client(host, export_name, certfile, tls_subject)
-    print "size: %s" % client.size()
+    print("size: %s" % client.size())
     for i in range(0, len(bitmap)):
         if bitmap[i] == 1:
             offset = i * changed_block_size
-            print "reading %d bytes from offset %d" % (changed_block_size,
-                                                       offset)
+            print("reading %d bytes from offset %d" % (changed_block_size,
+                                                       offset))
             data = client.read(offset=offset, length=changed_block_size)
             yield data
-    print "closing NBD"
+    print("closing NBD")
     client.close()
 
 
@@ -92,7 +92,7 @@ def save_changed_blocks(changed_blocks, output_file):
 def download_changed_blocks(bitmap, nbd_info, changed_blocks_output_path,
                             bitmap_output_path):
 
-    print "downloading changed blocks"
+    print("downloading changed blocks")
     cert_text = nbd_info['cert']
     with open(certfile, 'w') as cert_out:
         cert_out.write(cert_text)
@@ -135,7 +135,7 @@ def main():
         # Once you are done copying the blocks you want you can delete the
         # snapshot data
         session.xenapi.VDI.data_destroy(new_snapshot_ref)
-        print session.xenapi.VDI.get_uuid(new_snapshot_ref)
+        print(session.xenapi.VDI.get_uuid(new_snapshot_ref))
     finally:
         session.xenapi.session.logout(session)
         delete_host_certificates_file()

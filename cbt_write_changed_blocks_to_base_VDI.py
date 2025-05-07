@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 For a given base VDI and set of changed blocks this script will construct a
